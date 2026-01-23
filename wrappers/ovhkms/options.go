@@ -58,6 +58,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withClientCert = v
 			case "client_key":
 				opts.withClientKey = v
+			case "ca_cert":
+				opts.withCACert = v
 			}
 		}
 	}
@@ -86,6 +88,7 @@ type options struct {
 	withOkmsId     uuid.UUID
 	withClientCert string
 	withClientKey  string
+	withCACert     string
 }
 
 func getDefaultOptions() options {
@@ -131,6 +134,15 @@ func WithClientKey(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withClientKey = with
+			return nil
+		})
+	}
+}
+
+func WithCACert(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withCACert = with
 			return nil
 		})
 	}

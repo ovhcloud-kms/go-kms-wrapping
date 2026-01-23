@@ -6,6 +6,7 @@ package ovhkms
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -23,6 +24,7 @@ const (
 	EnvOkmsId             = "BAO_OKMS_ID"
 	EnvOkmsClientCert     = "BAO_OKMS_CLIENT_CERT"
 	EnvOkmsClientKey      = "BAO_OKMS_CLIENT_KEY"
+	EnvOkmsCaCert         = "BAO_OKMS_CA_CERT"
 )
 
 // Wrapper is a wrapper that uses the OVHcloud Service Key API
@@ -109,7 +111,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 		ow.okmsId = opts.withOkmsId
 	}
 
-	// configure TLS
+	// configure mTLS
 	clientCertFile := ""
 	if !opts.Options.WithDisallowEnvVars {
 		clientCertFile = os.Getenv(EnvOkmsClientCert)
@@ -126,10 +128,18 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 		clientKeyFile = opts.withClientKey
 	}
 
+	caCert := ""
+	if !opts.Options.WithDisallowEnvVars {
+		caCert = os.Getenv(EnvOkmsCaCert)
+	}
+	if caCert == "" {
+		caCert = opts.withCACert
+	}
+
 	if !(clientKeyFile != "" && clientCertFile != "") {
 		return nil, fmt.Errorf("missing client certificate/key")
 	}
-	clientCfg, err := getTLSconfig(clientCertFile, clientKeyFile)
+	clientCfg, err := getMTLSconfig(clientCertFile, clientKeyFile, caCert)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +179,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 	return wrapConfig, nil
 }
 
-func getTLSconfig(clientCertFile, clientKeyFile string) (okms.ClientConfig, error) {
+func getMTLSconfig(clientCertFile, clientKeyFile, caCertFile string) (okms.ClientConfig, error) {
 	clientCertBytes, err := os.ReadFile(clientCertFile)
 	if err != nil {
 		return okms.ClientConfig{}, err
@@ -187,6 +197,15 @@ func getTLSconfig(clientCertFile, clientKeyFile string) (okms.ClientConfig, erro
 		TlsCfg: &tls.Config{
 			Certificates: []tls.Certificate{tlsCert},
 		},
+	}
+	if caCertFile != "" {
+		caCertBytes, err := os.ReadFile(caCertFile)
+		if err != nil {
+			return okms.ClientConfig{}, err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCertBytes)
+		clientConfig.TlsCfg.RootCAs = caCertPool
 	}
 
 	// Uncomment this line to enable tracing of HTTP requests and responses
