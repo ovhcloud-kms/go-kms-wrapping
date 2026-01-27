@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package ovhkms
+package okms
 
 import (
 	"github.com/google/uuid"

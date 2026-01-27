@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package ovhkms
+package okms
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 // This test executes real calls. The calls themselves should be free,
-// but the KMS key used is generally not free.
+// but the OKMS key used is generally not free.
 //
 // To run this test, the following env variables need to be set:
 //   - OKMS_ACC_TESTS_KEY_ID

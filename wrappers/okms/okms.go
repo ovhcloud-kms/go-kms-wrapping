@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package ovhkms
+package okms
 
 import (
 	"context"
@@ -51,17 +51,17 @@ func NewWrapper() *Wrapper {
 }
 
 func (ow *Wrapper) Type(ctx context.Context) (wrapping.WrapperType, error) {
-	return wrapping.WrapperTypeOvhKms, nil
+	return wrapping.WrapperTypeOkms, nil
 }
 
 func (ow *Wrapper) KeyId(ctx context.Context) (string, error) {
 	return ow.currentKeyId.Load().(string), nil
 }
 
-// SetConfig sets the fields on the OvhKmsWrapper object based on
+// SetConfig sets the fields on the OkmsWrapper object based on
 // values from the config parameter.
 //
-// Order of precedence OvhKms values:
+// Order of precedence Okms values:
 // * Environment variable
 // * Value from Vault configuration file
 // * Instance metadata role (access key and secret key)
@@ -80,7 +80,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 	case opts.WithKeyId != "":
 		ow.keyId, err = uuid.Parse(opts.WithKeyId)
 	default:
-		return nil, fmt.Errorf("key id not found (env or config) for ovhkms wrapper configuration")
+		return nil, fmt.Errorf("key id not found (env or config) for okms wrapper configuration")
 	}
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 
 	ow.currentKeyId.Store(ow.keyId.String())
 
-	// set kms endpoint
+	// set okms endpoint
 	endpoint := ""
 	if !opts.Options.WithDisallowEnvVars {
 		endpoint = os.Getenv(EnvOkmsEndpoint)
@@ -97,7 +97,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 		endpoint = opts.withEndpoint
 	}
 
-	// set kms okmsId
+	// set okms ID
 	if !opts.Options.WithDisallowEnvVars {
 		okmsId := os.Getenv(EnvOkmsId)
 		if okmsId != "" {
@@ -216,7 +216,7 @@ func getMTLSconfig(clientCertFile, clientKeyFile, caCertFile string) (okms.Clien
 
 // Encrypt is used to encrypt the master key using the OVHcloud CMK.
 // This returns the ciphertext, and/or any errors from this
-// call. This should be called after the KMS client has been instantiated.
+// call. This should be called after the OKMS client has been instantiated.
 func (ow *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
