@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package okms
@@ -18,13 +18,13 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvOkmsWrapperKeyId   = "BAO_OKMS_WRAPPER_KEY_ID"
-	EnvVaultOkmsSealKeyId = "VAULT_OKMS_SEAL_KEY_ID"
-	EnvOkmsEndpoint       = "BAO_OKMS_ENDPOINT"
-	EnvOkmsId             = "BAO_OKMS_ID"
-	EnvOkmsClientCert     = "BAO_OKMS_CLIENT_CERT"
-	EnvOkmsClientKey      = "BAO_OKMS_CLIENT_KEY"
-	EnvOkmsCaCert         = "BAO_OKMS_CA_CERT"
+	EnvOkmsWrapperKeyId   = "OKMS_WRAPPER_KEY_ID"
+	EnvVaultOkmsSealKeyId = "OKMS_SEAL_KEY_ID"
+	EnvOkmsEndpoint       = "OKMS_ENDPOINT"
+	EnvOkmsId             = "OKMS_ID"
+	EnvOkmsClientCert     = "OKMS_CLIENT_CERT"
+	EnvOkmsClientKey      = "OKMS_CLIENT_KEY"
+	EnvOkmsCaCert         = "OKMS_CA_CERT"
 )
 
 // Wrapper is a wrapper that uses the OVHcloud Service Key API
@@ -50,11 +50,11 @@ func NewWrapper() *Wrapper {
 	return ow
 }
 
-func (ow *Wrapper) Type(ctx context.Context) (wrapping.WrapperType, error) {
+func (ow *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
 	return wrapping.WrapperTypeOkms, nil
 }
 
-func (ow *Wrapper) KeyId(ctx context.Context) (string, error) {
+func (ow *Wrapper) KeyId(_ context.Context) (string, error) {
 	return ow.currentKeyId.Load().(string), nil
 }
 
@@ -65,7 +65,7 @@ func (ow *Wrapper) KeyId(ctx context.Context) (string, error) {
 // * Environment variable
 // * Value from Vault configuration file
 // * Instance metadata role (access key and secret key)
-func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+func (ow *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 	if !(clientKeyFile != "" && clientCertFile != "") {
 		return nil, fmt.Errorf("missing client certificate/key")
 	}
-	clientCfg, err := getMTLSconfig(clientCertFile, clientKeyFile, caCert)
+	clientCfg, err := getMTLSConfig(clientCertFile, clientKeyFile, caCert)
 	if err != nil {
 		return nil, err
 	}
@@ -172,14 +172,14 @@ func (ow *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrap
 	// Map that holds non-sensitive configuration info
 	wrapConfig := new(wrapping.WrapperConfig)
 	wrapConfig.Metadata = make(map[string]string)
-	wrapConfig.Metadata["kms_key_id"] = ow.keyId.String()
+	wrapConfig.Metadata["key_id"] = ow.keyId.String()
 	wrapConfig.Metadata["endpoint"] = endpoint
-	wrapConfig.Metadata["okmsId"] = ow.okmsId.String()
+	wrapConfig.Metadata["okms_id"] = ow.okmsId.String()
 
 	return wrapConfig, nil
 }
 
-func getMTLSconfig(clientCertFile, clientKeyFile, caCertFile string) (okms.ClientConfig, error) {
+func getMTLSConfig(clientCertFile, clientKeyFile, caCertFile string) (okms.ClientConfig, error) {
 	clientCertBytes, err := os.ReadFile(clientCertFile)
 	if err != nil {
 		return okms.ClientConfig{}, err
@@ -217,7 +217,7 @@ func getMTLSconfig(clientCertFile, clientKeyFile, caCertFile string) (okms.Clien
 // Encrypt is used to encrypt the master key using the OVHcloud CMK.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the OKMS client has been instantiated.
-func (ow *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
+func (ow *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
@@ -228,7 +228,7 @@ func (ow *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrappin
 	}
 
 	if ow.client == nil {
-		return nil, fmt.Errorf("nil client")
+		panic("nil client")
 	}
 
 	encryptedDEK, err := ow.client.Encrypt(context.Background(), ow.okmsId, ow.keyId, "", env.Key)
@@ -236,7 +236,7 @@ func (ow *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrappin
 		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
 
-	ow.currentKeyId.Store(encryptedDEK)
+	ow.currentKeyId.Store(ow.keyId.String())
 
 	return &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
@@ -248,13 +248,13 @@ func (ow *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrappin
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
-func (ow *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
+func (ow *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
 	if ow.client == nil {
-		return nil, fmt.Errorf("nil client")
+		panic("nil client")
 	}
 
 	decryptedDEK, err := ow.client.Decrypt(context.Background(), ow.okmsId, ow.keyId, "", string(in.KeyInfo.WrappedKey))

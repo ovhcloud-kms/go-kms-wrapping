@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package okms
@@ -15,10 +15,10 @@ import (
 //
 // To run this test, the following env variables need to be set:
 //   - OKMS_ACC_TESTS_KEY_ID
-//   - BAO_OKMS_ENDPOINT
-//   - BAO_OKMS_ID
-//   - BAO_OKMS_CLIENT_CERT
-//   - BAO_OKMS_CLIENT_KEY
+//   - OKMS_ENDPOINT
+//   - OKMS_ID
+//   - OKMS_CLIENT_CERT
+//   - OKMS_CLIENT_KEY
 func TestAcckmipWrapper_Lifecycle(t *testing.T) {
 	if os.Getenv("VAULT_ACC") == "" && os.Getenv("KMS_ACC_TESTS") == "" {
 		t.SkipNow()

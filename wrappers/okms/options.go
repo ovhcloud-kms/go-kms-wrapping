@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package okms
@@ -45,11 +45,11 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 	if opts.WithConfigMap != nil {
 		for k, v := range opts.WithConfigMap {
 			switch k {
-			case "kms_key_id": // deprecated backend-specific value, set global
+			case "key_id": // deprecated backend-specific value, set global
 				opts.WithKeyId = v
 			case "endpoint":
 				opts.withEndpoint = v
-			case "okmsId":
+			case "okms_id":
 				opts.withOkmsId, err = uuid.Parse(v)
 				if err != nil {
 					return nil, err
@@ -95,7 +95,7 @@ func getDefaultOptions() options {
 	return options{}
 }
 
-// WithEndpoint provides a way to chose the endpoint
+// WithEndpoint provides a way to choose the endpoint
 func WithEndpoint(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
@@ -105,7 +105,7 @@ func WithEndpoint(with string) wrapping.Option {
 	}
 }
 
-// WithOkmsId provides a way to chose the okms ID
+// WithOkmsId provides a way to choose the okms ID
 func WithOkmsId(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
@@ -119,7 +119,7 @@ func WithOkmsId(with string) wrapping.Option {
 	}
 }
 
-// WithClientCert provides a way to chose the client cert
+// WithClientCert provides a way to choose the client cert
 func WithClientCert(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
@@ -129,7 +129,7 @@ func WithClientCert(with string) wrapping.Option {
 	}
 }
 
-// WithClientKey provides a way to chose the client key
+// WithClientKey provides a way to choose the client key
 func WithClientKey(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
