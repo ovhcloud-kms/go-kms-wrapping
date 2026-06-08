@@ -1,7 +1,7 @@
 // Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
-package okms
+package ovhcloudkms
 
 import (
 	"context"
@@ -25,6 +25,7 @@ const (
 	EnvOkmsClientCert     = "OKMS_CLIENT_CERT"
 	EnvOkmsClientKey      = "OKMS_CLIENT_KEY"
 	EnvOkmsCaCert         = "OKMS_CA_CERT"
+	EnvOkmsToken          = "OKMS_TOKEN"
 )
 
 // Wrapper is a wrapper that uses the OVHcloud Service Key API
@@ -111,6 +112,15 @@ func (ow *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappi
 		ow.okmsId = opts.withOkmsId
 	}
 
+	// configure token
+	token := ""
+	if !opts.Options.WithDisallowEnvVars {
+		token = os.Getenv(EnvOkmsToken)
+	}
+	if token == "" {
+		token = opts.withToken
+	}
+
 	// configure mTLS
 	clientCertFile := ""
 	if !opts.Options.WithDisallowEnvVars {
@@ -136,18 +146,36 @@ func (ow *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappi
 		caCert = opts.withCACert
 	}
 
-	if !(clientKeyFile != "" && clientCertFile != "") {
-		return nil, fmt.Errorf("missing client certificate/key")
-	}
-	clientCfg, err := getMTLSConfig(clientCertFile, clientKeyFile, caCert)
-	if err != nil {
-		return nil, err
-	}
-
-	// Request new OKMS client
-	ow.client, err = okms.NewRestAPIClient(endpoint, clientCfg)
-	if err != nil {
-		return nil, err
+	// One authentication method must be provided: mTLS or token.
+	hasMTLS := clientCertFile != "" || clientKeyFile != ""
+	hasToken := token != ""
+	switch {
+	case hasMTLS && hasToken:
+		return nil, fmt.Errorf("ambiguous authentication: provide either mTLS (client_cert/client_key) or token (token/okms_id), not both")
+	case hasMTLS:
+		if clientCertFile == "" || clientKeyFile == "" {
+			return nil, fmt.Errorf("missing client certificate/key for mTLS authentication")
+		}
+		clientCfg, err := getMTLSConfig(clientCertFile, clientKeyFile, caCert)
+		if err != nil {
+			return nil, err
+		}
+		ow.client, err = okms.NewRestAPIClient(endpoint, clientCfg)
+		if err != nil {
+			return nil, err
+		}
+	case hasToken:
+		clientCfg, err := getTokenConfig(caCert)
+		if err != nil {
+			return nil, err
+		}
+		ow.client, err = okms.NewRestAPIClient(endpoint, clientCfg)
+		if err != nil {
+			return nil, err
+		}
+		ow.client.WithCustomHeader("Authorization", "Bearer "+token)
+	default:
+		return nil, fmt.Errorf("missing authentication: provide either mTLS (client_cert/client_key) or token (token/okms_id)")
 	}
 
 	// Validate Service Key operations (expected: encrypt,decrypt)
@@ -211,6 +239,22 @@ func getMTLSConfig(clientCertFile, clientKeyFile, caCertFile string) (okms.Clien
 	// Uncomment this line to enable tracing of HTTP requests and responses
 	// clientConfig.Middleware = okms.DebugTransport(os.Stderr)
 
+	return clientConfig, nil
+}
+
+func getTokenConfig(caCertFile string) (okms.ClientConfig, error) {
+	clientConfig := okms.ClientConfig{}
+	if caCertFile != "" {
+		caCertBytes, err := os.ReadFile(caCertFile)
+		if err != nil {
+			return okms.ClientConfig{}, err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCertBytes)
+		clientConfig.TlsCfg = &tls.Config{
+			RootCAs: caCertPool,
+		}
+	}
 	return clientConfig, nil
 }
 
