@@ -16,7 +16,6 @@ const (
 	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
 	WrapperTypeKmip            WrapperType = "kmip"
 	WrapperTypeOciKms          WrapperType = "ocikms"
-	WrapperTypeOkms            WrapperType = "okms"
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypeSecurosysHsm    WrapperType = "securosys-hsm"
 	WrapperTypeTencentCloudKms WrapperType = "tencentcloudkms"
