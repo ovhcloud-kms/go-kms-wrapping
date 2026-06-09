@@ -16,6 +16,8 @@ import (
 	"github.com/ovh/okms-sdk-go"
 )
 
+const Type wrapping.WrapperType = "ovhcloudkms"
+
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
 	EnvOkmsWrapperKeyId   = "OKMS_WRAPPER_KEY_ID"
@@ -52,7 +54,7 @@ func NewWrapper() *Wrapper {
 }
 
 func (ow *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
-	return wrapping.WrapperTypeOkms, nil
+	return Type, nil
 }
 
 func (ow *Wrapper) KeyId(_ context.Context) (string, error) {
@@ -283,6 +285,7 @@ func (ow *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.
 	ow.currentKeyId.Store(ow.keyId.String())
 
 	return &wrapping.BlobInfo{
+		Iv:         env.Iv,
 		Ciphertext: env.Ciphertext,
 		KeyInfo: &wrapping.KeyInfo{
 			KeyId:      ow.keyId.String(),
